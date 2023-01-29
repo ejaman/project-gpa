@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import styled from "styled-components";
 
 interface ITodo {
@@ -80,36 +80,38 @@ const Todo = () => {
     e.dataTransfer.dropEffect = "move";
   };
 
-  const stopDragging = (e: any) => {
+  const stopDragging = (e: React.DragEvent<HTMLElement>): void => {
     e.stopPropagation();
     e.preventDefault();
-    return true;
   };
+
+  const moveClassName = useCallback(
+    (index: number): string => {
+      if (dragData.move_left.includes(index)) return "move_left";
+      if (dragData.move_right.includes(index)) return "move_right";
+      return "";
+    },
+    [dragData.move_left, dragData.move_right]
+  );
 
   return (
     <Container>
       <List className="list" onDragOver={stopDragging}>
-        {[thumbnail.main, ...thumbnail.images].map((e, i) => {
-          let default_class = "";
-          dragData.move_left.includes(i) && (default_class = "move_left");
-          dragData.move_right.includes(i) && (default_class = "move_right");
-
-          return (
-            <ListItem
-              key={i}
-              data-index={i}
-              className={default_class}
-              isDragged={isDragged}
-              draggable
-              onDragStart={onDragStart}
-              onDragEnter={onDragEnter}
-              onDragLeave={onDragLeave}
-              onDragEnd={onDragEnd}
-            >
-              <p>{e}</p>
-            </ListItem>
-          );
-        })}
+        {[thumbnail.main, ...thumbnail.images].map((e, i) => (
+          <ListItem
+            key={i}
+            data-index={i}
+            className={moveClassName(i)}
+            isDragged={isDragged}
+            draggable
+            onDragStart={onDragStart}
+            onDragEnter={onDragEnter}
+            onDragLeave={onDragLeave}
+            onDragEnd={onDragEnd}
+          >
+            <p>{e}</p>
+          </ListItem>
+        ))}
       </List>
     </Container>
   );
