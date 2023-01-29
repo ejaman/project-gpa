@@ -1,146 +1,131 @@
-import React, { useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import styled from "styled-components";
 
-const initialLists = [
-  {
-    title: "lecture1",
-    process: [{ title: "activity1" }],
-  },
-  {
-    title: "lecture2",
-    process: [{ title: "activity1" }, { title: "activity2" }],
-  },
-  {
-    title: "lecture3",
-    process: [
-      { title: "activity1" },
-      { title: "activity2" },
-      { title: "activity3" },
-    ],
-  },
-];
-
-const initialDragData = {
-  target: null,
-  index: -1,
-  move_down: [],
-  move_up: [],
-  updateLists: [],
-};
 interface ITodo {
   title: string;
-  process: { title: string }[];
+  process: string[];
 }
-
 interface InitialDragData {
-  target: any;
-  index: number;
-  move_down: number[];
   move_up: number[];
+  move_down: number[];
   updateLists: ITodo[];
 }
 
+const initialLists = [
+  { title: "task1", process: ["act1"] },
+  { title: "task2", process: ["act1", "act2"] },
+  { title: "task3", process: ["act1", "act2", "act3"] },
+];
+
 const Home = () => {
-  const [lists, setLists] = useState<ITodo[]>(initialLists);
-  const [dragData, setDragData] = useState<InitialDragData>(initialDragData);
+  const [processData, setProcessData] = useState<ITodo[]>(initialLists);
+  const [dragData, setDragData] = useState<InitialDragData>({
+    move_up: [],
+    move_down: [],
+    updateLists: [...processData],
+  });
   const [isDragged, setIsDragged] = useState(false);
+  const clickedItem = useRef<number>(-1);
 
   const onDragStart = (e: React.DragEvent<HTMLElement>): void => {
-    setIsDragged(true);
-    setDragData({
-      ...dragData,
-      target: e.target,
-      index: Number(e.currentTarget.dataset.index),
-      updateLists: [...lists],
-    });
+    console.log(e.currentTarget);
 
-    e.dataTransfer.setData("text/html", "");
+    setIsDragged(true);
+    clickedItem.current = Number(e.currentTarget.dataset.index);
     e.dataTransfer.effectAllowed = "move";
   };
-  const onDragEnter = (e: React.DragEvent<HTMLElement>): void => {
-    const _dragged = Number(dragData.target.dataset.index); // 처음 잡은 값
-    const _index = Number(dragData.index); // 바로 전 값
-    const _target = Number(e.currentTarget.dataset.index); // 현재 값
-    let move_down = [...dragData.move_down];
-    let move_up = [...dragData.move_up];
 
-    let data = [...dragData.updateLists];
-    data[_index] = data.splice(_target, 1, data[_index])[0];
-    if (_dragged > _target) {
-      move_down.includes(_target) ? move_down.pop() : move_down.push(_target);
-    } else if (_dragged < _target) {
-      move_up.includes(_target) ? move_up.pop() : move_up.push(_target);
+  const onDragEnter = (e: React.DragEvent<HTMLElement>): void => {
+    const clickedIndex = clickedItem.current;
+    const target = Number(e.currentTarget.dataset.index);
+    let move_up = [...dragData.move_up];
+    let move_down = [...dragData.move_down];
+
+    let data = [...processData];
+    const clicked = data.splice(clickedIndex, 1);
+    data.splice(target, 0, ...clicked);
+
+    if (clickedIndex > target) {
+      move_up.includes(target) ? move_up.pop() : move_up.push(target);
+    } else if (clickedIndex < target) {
+      move_down.includes(target) ? move_down.pop() : move_down.push(target);
     } else {
-      move_down = [];
       move_up = [];
+      move_down = [];
     }
 
+    e.currentTarget.style.cursor = "grabbing";
     setDragData({
-      ...dragData,
-      updateLists: data,
-      index: _target,
       move_up,
       move_down,
+      updateLists: data,
     });
   };
+
   const onDragLeave = (e: React.DragEvent<HTMLElement>): void => {
-    if (e.target === dragData.target) {
+    const target = Number(e.currentTarget.dataset.index);
+    if (target === clickedItem.current) {
       e.currentTarget.style.visibility = "hidden";
     }
   };
+
   const onDragEnd = (e: React.DragEvent<HTMLElement>): void => {
     setIsDragged(false);
-    setLists([...dragData.updateLists]);
+    setProcessData([...dragData.updateLists]);
 
+    clickedItem.current = -1;
     setDragData({
-      ...dragData,
-      move_down: [],
       move_up: [],
-      updateLists: [],
+      move_down: [],
+      updateLists: [...processData],
     });
 
     e.currentTarget.style.visibility = "visible";
     e.dataTransfer.dropEffect = "move";
   };
 
-  const stopDragging = (e: any) => {
+  const stopDragging = (e: React.DragEvent<HTMLElement>): void => {
     e.stopPropagation();
     e.preventDefault();
-    return true;
+  };
+
+  const moveClassName = useCallback(
+    (index: number): string => {
+      if (dragData.move_up.includes(index)) return "move_up";
+      if (dragData.move_down.includes(index)) return "move_down";
+      return "";
+    },
+    [dragData.move_up, dragData.move_down]
+  );
+
+  const onClick = () => {
+    console.log("click");
   };
 
   return (
     <Container>
-      <List className="list" onDragOver={stopDragging}>
-        {lists.map((e, i) => {
-          let default_class = "";
+      <List onDragOver={stopDragging}>
+        {processData.map((e, i) => (
+          <ListItem
+            key={i}
+            data-index={i}
+            className={moveClassName(i)}
+            isDragged={isDragged}
+            draggable
+            onDragStart={onDragStart}
+            onDragEnter={onDragEnter}
+            onDragLeave={onDragLeave}
+            onDragEnd={onDragEnd}
+          >
+            <Item>{e.title}</Item>
 
-          dragData.move_down.includes(i) && (default_class = "move_down");
-          dragData.move_up.includes(i) && (default_class = "move_up");
-
-          return (
-            <ListItem
-              key={i}
-              data-index={i}
-              draggable
-              onDragStart={onDragStart}
-              onDragEnter={onDragEnter}
-              onDragLeave={onDragLeave}
-              onDragEnd={onDragEnd}
-              className={default_class}
-              isDragged={isDragged}
-            >
-              <p>{e.title}</p>
-              {e.process.map((e, i) => {
-                return (
-                  <ListItem draggable isDragged={isDragged} key={i}>
-                    {e.title}
-                  </ListItem>
-                );
-              })}
-            </ListItem>
-          );
-        })}
+            {e.process.map((act, i) => (
+              <Item key={i} onClick={onClick}>
+                act
+              </Item>
+            ))}
+          </ListItem>
+        ))}
       </List>
     </Container>
   );
@@ -161,12 +146,17 @@ const Container = styled.div`
 `;
 
 const List = styled.ul`
-  width: 300px;
+  width: 800px;
   list-style: none;
-  background-color: #bf4949;
+  background-color: #49bf86;
   border-radius: 5px;
   display: flex;
   flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 10px;
+  padding: 10px;
 `;
 
 interface IListItem {
@@ -174,16 +164,12 @@ interface IListItem {
 }
 
 const ListItem = styled.div<IListItem>`
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
   align-items: center;
-  padding: 15px 8px;
   ${(props) => props.isDragged && "transition: transform 200ms ease 0s"};
   user-select: none;
   touch-action: none;
   background-color: white;
-  opacity: 0.5;
+  padding: 10px;
   cursor: grab;
   i {
     flex: 1;
@@ -191,15 +177,22 @@ const ListItem = styled.div<IListItem>`
   p {
     flex: 6;
   }
-  &.move_up {
-    transform: translate(0, -100px);
-    z-index: 1;
-  }
   &.move_down {
-    transform: translate(0, 100px);
-    z-index: 1;
+    transform: translate(0, -50px);
+  }
+  &.move_up {
+    transform: translate(0, 50px);
   }
   & > * {
     pointer-events: none;
   }
+`;
+
+const Items = styled.div``;
+
+const Item = styled.div`
+  align-items: center;
+  width: 500px;
+  height: 50px;
+  background-color: #649164;
 `;
