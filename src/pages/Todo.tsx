@@ -50,6 +50,7 @@ const Todo = () => {
       move_left = [];
       move_right = [];
     }
+
     e.currentTarget.style.cursor = "grabbing";
     setDragData({
       move_left,
@@ -96,7 +97,7 @@ const Todo = () => {
 
   return (
     <Container>
-      <List className="list" onDragOver={stopDragging}>
+      <List onDragOver={stopDragging}>
         {[thumbnail.main, ...thumbnail.images].map((e, i) => (
           <ListItem
             key={i}
